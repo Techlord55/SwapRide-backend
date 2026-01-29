@@ -54,6 +54,10 @@ const io = socketIO(server, {
 // Store io instance globally for access in controllers
 app.set('io', io);
 
+// Trust proxy - Required for Render, Heroku, etc.
+// This allows Express to trust X-Forwarded-* headers
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 app.use(securityMiddleware);
