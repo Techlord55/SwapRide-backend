@@ -13,6 +13,122 @@ const { asyncHandler } = require('../utils/asyncHandler');
 const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
 
 /**
+ * Get or create user from Clerk ID
+ */
+async function getOrCreateUser(clerkId) {
+  // First, try to find existing user
+  let user = await prisma.user.findUnique({
+    where: { clerkId },
+    select: {
+      id: true,
+      clerkId: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      role: true,
+      accountType: true,
+      accountStatus: true,
+      isActive: true,
+    },
+  });
+
+  // If user exists, return it
+  if (user) {
+    return user;
+  }
+
+  // User doesn't exist, need to create
+  console.log('🆕 User not found in database, fetching from Clerk API...');
+  console.log(`   Clerk ID: ${clerkId}`);
+
+  try {
+    // Fetch full user data from Clerk
+    const clerkUser = await clerkClient.users.getUser(clerkId);
+    
+    // Extract email from email addresses array
+    const email = clerkUser.emailAddresses?.find(e => e.id === clerkUser.primaryEmailAddressId)?.emailAddress ||
+                  clerkUser.emailAddresses?.[0]?.emailAddress ||
+                  `user_${clerkId}@temp.swapride.com`;
+    
+    const firstName = clerkUser.firstName || 'User';
+    const lastName = clerkUser.lastName || clerkId.substring(5, 13);
+    const isEmailVerified = clerkUser.emailAddresses?.[0]?.verification?.status === 'verified';
+
+    console.log(`✅ Fetched from Clerk API:`);
+    console.log(`   Email: ${email}`);
+    console.log(`   Name: ${firstName} ${lastName}`);
+    console.log(`   Verified: ${isEmailVerified}`);
+
+    // Use upsert to handle race conditions
+    user = await prisma.user.upsert({
+      where: { clerkId },
+      update: {
+        // Update email/name if user was created by another request
+        email,
+        firstName,
+        lastName,
+        isEmailVerified,
+      },
+      create: {
+        clerkId,
+        email,
+        firstName,
+        lastName,
+        isEmailVerified,
+        accountStatus: 'active',
+        isActive: true,
+      },
+      select: {
+        id: true,
+        clerkId: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        accountType: true,
+        accountStatus: true,
+        isActive: true,
+      },
+    });
+
+    console.log(`✅ Created new user: ${email}`);
+    return user;
+    
+  } catch (clerkError) {
+    console.error(`❌ Failed to fetch from Clerk API:`, clerkError.message);
+    
+    // Fallback: Use upsert with placeholder data
+    user = await prisma.user.upsert({
+      where: { clerkId },
+      update: {},
+      create: {
+        clerkId,
+        email: `user_${clerkId}@temp.swapride.com`,
+        firstName: 'User',
+        lastName: clerkId.substring(5, 13),
+        isEmailVerified: false,
+        accountStatus: 'active',
+        isActive: true,
+      },
+      select: {
+        id: true,
+        clerkId: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        accountType: true,
+        accountStatus: true,
+        isActive: true,
+      },
+    });
+    
+    console.log(`⚠️  Created user with placeholder data: ${user.email}`);
+    return user;
+  }
+}
+
+/**
  * Verify Clerk JWT token locally (FAST - no API calls)
  */
 const verifyClerkToken = asyncHandler(async (req, res, next) => {
@@ -40,103 +156,8 @@ const verifyClerkToken = asyncHandler(async (req, res, next) => {
 
     const clerkId = payload.sub;
 
-    // Check if user exists in database
-    let user = await prisma.user.findUnique({
-      where: { clerkId },
-      select: {
-        id: true,
-        clerkId: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        accountType: true,
-        accountStatus: true,
-        isActive: true,
-      },
-    });
-
-    // If user doesn't exist, create them from JWT claims
-    if (!user) {
-      // JWT payload doesn't always contain user details (email, name)
-      // We need to fetch from Clerk API
-      console.log('🆕 User not found in database, fetching from Clerk API...');
-      console.log(`   Clerk ID: ${clerkId}`);
-      console.log(`   JWT Payload keys:`, Object.keys(payload));
-
-      try {
-        // Fetch full user data from Clerk
-        const clerkUser = await clerkClient.users.getUser(clerkId);
-        
-        // Extract email from email addresses array
-        const email = clerkUser.emailAddresses?.find(e => e.id === clerkUser.primaryEmailAddressId)?.emailAddress ||
-                      clerkUser.emailAddresses?.[0]?.emailAddress ||
-                      `user_${clerkId}@temp.swapride.com`;
-        
-        const firstName = clerkUser.firstName || 'User';
-        const lastName = clerkUser.lastName || clerkId.substring(5, 13);
-        const isEmailVerified = clerkUser.emailAddresses?.[0]?.verification?.status === 'verified';
-
-        console.log(`✅ Fetched from Clerk API:`);
-        console.log(`   Email: ${email}`);
-        console.log(`   Name: ${firstName} ${lastName}`);
-        console.log(`   Verified: ${isEmailVerified}`);
-
-        user = await prisma.user.create({
-          data: {
-            clerkId,
-            email,
-            firstName,
-            lastName,
-            isEmailVerified,
-            accountStatus: 'active',
-            isActive: true,
-          },
-        select: {
-          id: true,
-          clerkId: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          role: true,
-          accountType: true,
-          accountStatus: true,
-          isActive: true,
-        },
-      });
-
-      console.log(`✅ Created new user: ${email}`);
-      
-      } catch (clerkError) {
-        console.error(`❌ Failed to fetch from Clerk API:`, clerkError.message);
-        
-        // Fallback: Create user with placeholder data
-        user = await prisma.user.create({
-          data: {
-            clerkId,
-            email: `user_${clerkId}@temp.swapride.com`,
-            firstName: 'User',
-            lastName: clerkId.substring(5, 13),
-            isEmailVerified: false,
-            accountStatus: 'active',
-            isActive: true,
-          },
-          select: {
-            id: true,
-            clerkId: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            role: true,
-            accountType: true,
-            accountStatus: true,
-            isActive: true,
-          },
-        });
-        
-        console.log(`⚠️  Created user with placeholder data: ${user.email}`);
-      }
-    }
+    // Get or create user
+    const user = await getOrCreateUser(clerkId);
 
     // Check if user is active
     if (!user.isActive) {
@@ -195,83 +216,8 @@ const optionalClerkAuth = asyncHandler(async (req, res, next) => {
       if (payload && payload.sub) {
         const clerkId = payload.sub;
 
-        // Get user from database
-        let user = await prisma.user.findUnique({
-          where: { clerkId },
-          select: {
-            id: true,
-            clerkId: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            role: true,
-            accountType: true,
-            accountStatus: true,
-            isActive: true,
-          },
-        });
-
-        // Create user if doesn't exist
-        if (!user) {
-          try {
-            const clerkUser = await clerkClient.users.getUser(clerkId);
-            
-            const email = clerkUser.emailAddresses?.find(e => e.id === clerkUser.primaryEmailAddressId)?.emailAddress ||
-                          clerkUser.emailAddresses?.[0]?.emailAddress ||
-                          `user_${clerkId}@temp.swapride.com`;
-            
-            const firstName = clerkUser.firstName || 'User';
-            const lastName = clerkUser.lastName || clerkId.substring(5, 13);
-            const isEmailVerified = clerkUser.emailAddresses?.[0]?.verification?.status === 'verified';
-
-            user = await prisma.user.create({
-              data: {
-                clerkId,
-                email,
-                firstName,
-                lastName,
-                isEmailVerified,
-                accountStatus: 'active',
-                isActive: true,
-              },
-              select: {
-                id: true,
-                clerkId: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                role: true,
-                accountType: true,
-                accountStatus: true,
-                isActive: true,
-              },
-            });
-          } catch (clerkError) {
-            // Fallback if Clerk API fails
-            user = await prisma.user.create({
-              data: {
-                clerkId,
-                email: `user_${clerkId}@temp.swapride.com`,
-                firstName: 'User',
-                lastName: clerkId.substring(5, 13),
-                isEmailVerified: false,
-                accountStatus: 'active',
-                isActive: true,
-              },
-              select: {
-                id: true,
-                clerkId: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                role: true,
-                accountType: true,
-                accountStatus: true,
-                isActive: true,
-              },
-            });
-          }
-        }
+        // Get or create user
+        const user = await getOrCreateUser(clerkId);
 
         if (user && user.isActive && user.accountStatus === 'active') {
           req.user = user;
