@@ -1,0 +1,754 @@
+// Prisma Schema for SwapRide
+// Neon PostgreSQL Database
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Enums
+enum AccountType {
+  buyer
+  seller
+  both
+}
+
+enum UserRole {
+  user
+  dealer
+  admin
+}
+
+enum AccountStatus {
+  active
+  suspended
+  banned
+  pending
+}
+
+enum SubscriptionPlan {
+  free
+  basic
+  premium
+  enterprise
+}
+
+enum VerificationBadge {
+  email
+  phone
+  id
+  trusted_seller
+  dealer
+  premium
+}
+
+enum VehicleCondition {
+  new
+  used
+  certified_pre_owned
+}
+
+enum VehicleStatus {
+  active
+  sold
+  swapped
+  pending
+  inactive
+  expired
+}
+
+enum PartCondition {
+  new
+  used
+  refurbished
+  salvage
+  oem
+  aftermarket
+}
+
+enum PartCategory {
+  engine
+  transmission
+  suspension
+  brakes
+  electrical
+  body
+  interior
+  exterior
+  wheels_tires
+  exhaust
+  cooling
+  fuel_system
+  lights
+  accessories
+  other
+}
+
+enum PartStatus {
+  active
+  sold
+  swapped
+  pending
+  inactive
+}
+
+enum SwapStatus {
+  pending
+  accepted
+  rejected
+  completed
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+  refunded
+  cancelled
+}
+
+enum PaymentMethod {
+  card
+  bank_transfer
+  mobile_money
+  cash
+}
+
+enum NotificationType {
+  message
+  swap_request
+  swap_accepted
+  swap_rejected
+  listing_expired
+  payment_received
+  review_received
+  system
+}
+
+enum SupportMessageType {
+  live_chat
+  contact_form
+  support_ticket
+  inquiry
+}
+
+enum SupportMessageCategory {
+  general
+  technical
+  billing
+  account
+  vehicle
+  swap
+  part
+  other
+}
+
+enum SupportMessageStatus {
+  pending
+  in_progress
+  resolved
+  closed
+}
+
+enum SupportMessagePriority {
+  low
+  medium
+  high
+  urgent
+}
+
+// User Model
+model User {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Authentication
+  clerkId  String? @unique
+  email    String  @unique
+  password String?
+  phone    String?
+
+  // Profile
+  firstName String
+  lastName  String
+  username  String? @unique
+  avatarUrl String?
+  avatarPublicId String?
+  bio       String?
+
+  // Verification
+  isEmailVerified Boolean @default(false)
+  isPhoneVerified Boolean @default(false)
+  isIDVerified    Boolean @default(false)
+  verificationBadges VerificationBadge[]
+
+  // Location
+  city        String?
+  region      String?
+  country     String?
+  address     String?
+  latitude    Float?
+  longitude   Float?
+
+  // Account Type & Role
+  role        UserRole     @default(user)
+  accountType AccountType  @default(both)
+
+  // Subscription
+  subscriptionPlan      SubscriptionPlan @default(free)
+  subscriptionStartDate DateTime?
+  subscriptionEndDate   DateTime?
+  subscriptionIsActive  Boolean          @default(false)
+  featuredListings      Int              @default(0)
+  boostedAds            Int              @default(0)
+  prioritySupport       Boolean          @default(false)
+
+  // Statistics
+  rating         Float @default(0)
+  reviewCount    Int   @default(0)
+  totalSales     Int   @default(0)
+  totalSwaps     Int   @default(0)
+  totalListings  Int   @default(0)
+
+  // Preferences
+  notificationEmail Boolean @default(true)
+  notificationPush  Boolean @default(true)
+  notificationSms   Boolean @default(false)
+  language          String  @default("en")
+  currency          String  @default("USD")
+
+  // Security
+  passwordChangedAt          DateTime?
+  passwordResetToken         String?
+  passwordResetExpires       DateTime?
+  emailVerificationToken     String?
+  emailVerificationExpires   DateTime?
+  phoneVerificationToken     String?
+  phoneVerificationExpires   DateTime?
+
+  // Account Status
+  accountStatus AccountStatus @default(active)
+  isActive      Boolean       @default(true)
+  banReason     String?
+  banExpires    DateTime?
+
+  // Activity
+  lastLogin  DateTime?
+  loginCount Int       @default(0)
+
+  // Relations
+  vehicles         Vehicle[]
+  parts            Part[]
+  sentSwaps        Swap[]           @relation("SentSwaps")
+  receivedSwaps    Swap[]           @relation("ReceivedSwaps")
+  payments         Payment[]
+  givenReviews     Review[]         @relation("GivenReviews")
+  receivedReviews  Review[]         @relation("ReceivedReviews")
+  notifications    Notification[]
+  favorites        Favorite[]
+  savedSearches    SavedSearch[]
+  reports          Report[]
+  sentMessages     Chat[]           @relation("SentMessages")
+  receivedMessages Chat[]           @relation("ReceivedMessages")
+  conversations    Conversation[]
+  supportMessages         SupportMessage[]
+  assignedSupportMessages SupportMessage[] @relation("AssignedSupportMessages")
+
+  @@index([email])
+  @@index([clerkId])
+  @@index([username])
+  @@index([role, accountStatus])
+}
+
+// Vehicle Model
+model Vehicle {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Basic Info
+  title       String
+  slug        String  @unique
+  description String
+  
+  // Vehicle Details
+  make          String
+  model         String
+  year          Int
+  mileage       Int
+  condition     VehicleCondition
+  bodyType      String?
+  transmission  String?
+  fuelType      String?
+  engineSize    String?
+  color         String?
+  vin           String?          @unique
+  registrationNumber String?
+
+  // Pricing
+  price           Float
+  currency        String  @default("USD")
+  priceNegotiable Boolean @default(true)
+
+  // Swap Options
+  openToSwap       Boolean @default(false)
+  swapPreferences  String?
+
+  // Features
+  features Json?
+
+  // Media
+  images Json[] // Array of {url, publicId, thumbnail, isPrimary}
+
+  // Location
+  city      String
+  region    String?
+  country   String
+  latitude  Float?
+  longitude Float?
+
+  // Seller
+  sellerId String
+  seller   User   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  // Status
+  status VehicleStatus @default(active)
+
+  // Features
+  isFeatured    Boolean   @default(false)
+  featuredUntil DateTime?
+  isBoosted     Boolean   @default(false)
+  boostedUntil  DateTime?
+
+  // Views & Engagement
+  views        Int @default(0)
+  contactCount Int @default(0)
+
+  // Flags
+  isReported   Boolean @default(false)
+  reportCount  Int     @default(0)
+  isVerified   Boolean @default(false)
+
+  // Relations
+  swaps     Swap[]
+  favorites Favorite[]
+  reviews   Review[]
+
+  // Metadata
+  expiresAt DateTime?
+
+  @@index([sellerId])
+  @@index([slug])
+  @@index([make, model])
+  @@index([status])
+  @@index([price])
+  @@index([createdAt])
+}
+
+// Part Model
+model Part {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Basic Info
+  title       String
+  slug        String  @unique
+  description String
+
+  // Part Details
+  partName   String
+  partNumber String?
+  category   PartCategory
+
+  // Compatibility
+  compatibleMakes    String[]
+  compatibleModels   String[]
+  compatibleYears    Int[]
+  isUniversal        Boolean  @default(false)
+
+  // Condition
+  condition PartCondition
+
+  // Pricing
+  price           Float
+  currency        String  @default("USD")
+  priceNegotiable Boolean @default(true)
+
+  // Swap Options
+  openToSwap               Boolean @default(false)
+  acceptedPartCategories   String[]
+  swapAdditionalNotes      String?
+
+  // Stock & Quantity
+  quantity Int     @default(1)
+  inStock  Boolean @default(true)
+
+  // Media
+  images Json[] // Array of {url, publicId, thumbnail, isPrimary}
+
+  // Location
+  city      String
+  region    String?
+  country   String
+  latitude  Float?
+  longitude Float?
+
+  // Seller
+  sellerId String
+  seller   User   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  // Status
+  status PartStatus @default(active)
+
+  // Features
+  isFeatured    Boolean   @default(false)
+  featuredUntil DateTime?
+
+  // Specifications
+  weight       String?
+  dimensions   String?
+  material     String?
+  brand        String?
+  manufacturer String?
+  warranty     String?
+  otherSpecs   Json?
+
+  // Views & Engagement
+  views        Int @default(0)
+  contactCount Int @default(0)
+
+  // Flags
+  isReported  Boolean @default(false)
+  reportCount Int     @default(0)
+  isVerified  Boolean @default(false)
+
+  // Metadata
+  expiresAt DateTime?
+
+  @@index([sellerId])
+  @@index([slug])
+  @@index([category])
+  @@index([status])
+  @@index([price])
+  @@index([createdAt])
+}
+
+// Swap Model
+model Swap {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Parties
+  initiatorId String
+  initiator   User   @relation("SentSwaps", fields: [initiatorId], references: [id], onDelete: Cascade)
+  
+  receiverId  String
+  receiver    User   @relation("ReceivedSwaps", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  // Items
+  offeredVehicleId  String?
+  offeredVehicle    Vehicle? @relation(fields: [offeredVehicleId], references: [id])
+  
+  requestedItemType String // 'vehicle' or 'part'
+  requestedItemId   String
+
+  // Details
+  message         String?
+  additionalCash  Float?   @default(0)
+  currency        String   @default("USD")
+
+  // Status
+  status       SwapStatus @default(pending)
+  responseNote String?
+
+  // Completion
+  completedAt DateTime?
+
+  @@index([initiatorId])
+  @@index([receiverId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Payment Model
+model Payment {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // User
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Payment Details
+  amount          Float
+  currency        String        @default("USD")
+  paymentMethod   PaymentMethod
+  status          PaymentStatus @default(pending)
+  
+  // Transaction
+  transactionId   String?       @unique
+  reference       String?       @unique
+  description     String?
+
+  // Provider (Kora Pay)
+  providerRef     String?
+  providerStatus  String?
+  providerMessage String?
+
+  // Metadata
+  metadata        Json?
+
+  @@index([userId])
+  @@index([status])
+  @@index([transactionId])
+  @@index([createdAt])
+}
+
+// Review Model
+model Review {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Parties
+  reviewerId String
+  reviewer   User   @relation("GivenReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  reviewedUserId String
+  reviewedUser   User   @relation("ReceivedReviews", fields: [reviewedUserId], references: [id], onDelete: Cascade)
+
+  // Review Content
+  rating  Int    // 1-5
+  comment String?
+
+  // Related Item
+  vehicleId String?
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
+
+  // Status
+  isApproved Boolean @default(false)
+  status     String  @default("pending") // pending, approved, rejected
+
+  @@index([reviewerId])
+  @@index([reviewedUserId])
+  @@index([vehicleId])
+  @@index([status])
+}
+
+// Notification Model
+model Notification {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // User
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Content
+  type    NotificationType
+  title   String
+  message String
+  data    Json?
+
+  // Status
+  isRead Boolean @default(false)
+  readAt DateTime?
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// Favorite Model
+model Favorite {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  // User
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Item
+  vehicleId String?
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, vehicleId])
+  @@index([userId])
+  @@index([vehicleId])
+}
+
+// SavedSearch Model
+model SavedSearch {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // User
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Search Criteria
+  name     String
+  criteria Json
+  
+  // Notifications
+  notifyOnNewListings Boolean @default(true)
+
+  @@index([userId])
+}
+
+// Report Model
+model Report {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Reporter
+  reporterId String
+  reporter   User   @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  // Reported Item
+  itemType String // 'vehicle', 'part', 'user'
+  itemId   String
+  
+  // Report Details
+  reason      String
+  description String?
+  
+  // Status
+  status     String  @default("pending") // pending, reviewed, resolved
+  resolution String?
+  resolvedAt DateTime?
+
+  @@index([reporterId])
+  @@index([itemType, itemId])
+  @@index([status])
+}
+
+// Chat/Message Model
+model Chat {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Conversation
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // Sender
+  senderId String
+  sender   User   @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  // Receiver
+  receiverId String
+  receiver   User   @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  // Message
+  message String
+  
+  // Attachments
+  attachments Json[]
+
+  // Status
+  isRead Boolean @default(false)
+  readAt DateTime?
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
+}
+
+// Conversation Model
+model Conversation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Participants (stored as array of user IDs)
+  participants String[]
+
+  // Last Message
+  lastMessage   String?
+  lastMessageAt DateTime?
+
+  // Relations
+  messages Chat[]
+  users    User[]
+
+  @@index([participants])
+  @@index([updatedAt])
+}
+
+// Support Message Model for Live Chat
+model SupportMessage {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // User Info (can be null for guests)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  // Contact Details
+  userName  String
+  userEmail String
+  userPhone String?
+
+  // Message Content
+  message  String
+  type     SupportMessageType     @default(live_chat)
+  category SupportMessageCategory @default(general)
+
+  // Status & Priority
+  status   SupportMessageStatus   @default(pending)
+  priority SupportMessagePriority @default(medium)
+
+  // Assignment
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedSupportMessages", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  // Admin Response
+  adminResponse String?
+  respondedAt   DateTime?
+
+  // Tracking
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
+
+  // Attachments
+  attachments Json[] // Array of {url, fileName, fileType, fileSize}
+
+  // Tags
+  tags String[]
+
+  // Read Status
+  isRead Boolean @default(false)
+  readAt DateTime?
+
+  // Notes (admin internal notes)
+  notes Json[] // Array of {adminId, note, createdAt}
+
+  @@index([userId])
+  @@index([userEmail])
+  @@index([status])
+  @@index([type])
+  @@index([category])
+  @@index([assignedToId])
+  @@index([priority])
+  @@index([createdAt])
+  @@index([status, createdAt])
+}

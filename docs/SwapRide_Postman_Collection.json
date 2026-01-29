@@ -1,0 +1,545 @@
+{
+  "info": {
+    "name": "SwapRide API - Complete Collection",
+    "description": "Complete API collection for SwapRide vehicle marketplace platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"Test123!@#\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneNumber\": \"+237123456789\",\n  \"userType\": \"individual\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('authToken', response.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"Test123!@#\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/auth/logout"
+          }
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/auth/verify-email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"verification-token-here\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/auth/forgot-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/auth/reset-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resetToken\": \"reset-token-here\",\n  \"password\": \"NewPassword123!@#\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vehicles",
+      "item": [
+        {
+          "name": "Create Vehicle",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/vehicles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Toyota Camry 2020\",\n  \"description\": \"Well maintained sedan in excellent condition\",\n  \"vehicleType\": \"car\",\n  \"make\": \"Toyota\",\n  \"model\": \"Camry\",\n  \"year\": 2020,\n  \"price\": 15000000,\n  \"condition\": \"used\",\n  \"mileage\": 45000,\n  \"fuelType\": \"petrol\",\n  \"transmission\": \"automatic\",\n  \"bodyType\": \"sedan\",\n  \"color\": \"silver\",\n  \"location\": {\n    \"address\": \"Douala, Cameroon\",\n    \"city\": \"Douala\",\n    \"country\": \"Cameroon\"\n  },\n  \"features\": [\"Air Conditioning\", \"Power Windows\", \"Bluetooth\"],\n  \"acceptSwap\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Get All Vehicles",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/vehicles?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["vehicles"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "20"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Vehicle by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vehicles/:vehicleId"
+          }
+        },
+        {
+          "name": "Update Vehicle",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/vehicles/:vehicleId",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 14500000,\n  \"description\": \"Updated description\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Vehicle",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/vehicles/:vehicleId"
+          }
+        },
+        {
+          "name": "Search Vehicles",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/vehicles/search?query=Toyota&minPrice=10000000&maxPrice=20000000&year=2020",
+              "host": ["{{baseUrl}}"],
+              "path": ["vehicles", "search"],
+              "query": [
+                {"key": "query", "value": "Toyota"},
+                {"key": "minPrice", "value": "10000000"},
+                {"key": "maxPrice", "value": "20000000"},
+                {"key": "year", "value": "2020"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Nearby Vehicles",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/vehicles/nearby?latitude=4.0511&longitude=9.7679&radius=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["vehicles", "nearby"],
+              "query": [
+                {"key": "latitude", "value": "4.0511"},
+                {"key": "longitude", "value": "9.7679"},
+                {"key": "radius", "value": "50"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Featured Vehicles",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vehicles/featured"
+          }
+        },
+        {
+          "name": "Get My Vehicles",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vehicles/my-vehicles"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Parts",
+      "item": [
+        {
+          "name": "Create Part",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/parts",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Toyota Camry Alternator\",\n  \"description\": \"Brand new alternator for Toyota Camry 2015-2020\",\n  \"category\": \"engine\",\n  \"price\": 150000,\n  \"condition\": \"new\",\n  \"partNumber\": \"ALT-TC-2020\",\n  \"compatibility\": {\n    \"makes\": [\"Toyota\"],\n    \"models\": [\"Camry\"],\n    \"years\": [2015, 2016, 2017, 2018, 2019, 2020]\n  },\n  \"location\": {\n    \"city\": \"Douala\",\n    \"country\": \"Cameroon\"\n  },\n  \"acceptSwap\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Get All Parts",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/parts"
+          }
+        },
+        {
+          "name": "Search Compatible Parts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/parts/compatible?make=Toyota&model=Camry&year=2020",
+              "host": ["{{baseUrl}}"],
+              "path": ["parts", "compatible"],
+              "query": [
+                {"key": "make", "value": "Toyota"},
+                {"key": "model", "value": "Camry"},
+                {"key": "year", "value": "2020"}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Swaps",
+      "item": [
+        {
+          "name": "Create Swap Proposal",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/swaps",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestedItem\": {\n    \"itemId\": \"vehicle-id-here\",\n    \"itemType\": \"vehicle\"\n  },\n  \"offeredItem\": {\n    \"itemId\": \"your-vehicle-id\",\n    \"itemType\": \"vehicle\"\n  },\n  \"cashTopUp\": 500000,\n  \"message\": \"Interested in swapping my vehicle for yours with some cash top-up\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get My Swaps",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/swaps/my-swaps"
+          }
+        },
+        {
+          "name": "Get Swap by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/swaps/:swapId"
+          }
+        },
+        {
+          "name": "Accept Swap",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/swaps/:swapId/accept",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Accepted! Let's proceed with the swap\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reject Swap",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/swaps/:swapId/reject",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Not interested at this time\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Counter Offer",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/swaps/:swapId/counter",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cashTopUp\": 750000,\n  \"message\": \"Can you increase the cash top-up to 750k?\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        {
+          "name": "Create Conversation",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/chat/conversations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientId\": \"user-id-here\",\n  \"relatedListing\": {\n    \"listingId\": \"vehicle-id-here\",\n    \"listingType\": \"vehicle\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Get My Conversations",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/chat/conversations"
+          }
+        },
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/chat/messages",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conversationId\": \"conversation-id-here\",\n  \"content\": \"Hello, is this vehicle still available?\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Messages",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/chat/conversations/:conversationId/messages"
+          }
+        },
+        {
+          "name": "Mark as Read",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/chat/conversations/:conversationId/read"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Initialize Payment",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/payments/initialize",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 5000,\n  \"paymentType\": \"feature_listing\",\n  \"relatedItem\": {\n    \"itemId\": \"vehicle-id-here\",\n    \"itemType\": \"vehicle\"\n  },\n  \"duration\": 7\n}"
+            }
+          }
+        },
+        {
+          "name": "Verify Payment",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/payments/verify",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reference\": \"payment-reference-here\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Payment History",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/payments/my-payments"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reviews",
+      "item": [
+        {
+          "name": "Create Review",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/reviews",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewedUser\": \"user-id-here\",\n  \"rating\": 5,\n  \"title\": \"Great seller!\",\n  \"comment\": \"Very professional and honest. Highly recommended!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get User Reviews",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/reviews/user/:userId"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Submit Report",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/reports",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reportedEntity\": {\n    \"entityType\": \"vehicle\",\n    \"entityId\": \"vehicle-id-here\"\n  },\n  \"reportType\": \"fake_listing\",\n  \"description\": \"This listing appears to be fake with stock photos\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/dashboard"
+          }
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/users"
+          }
+        },
+        {
+          "name": "Ban User",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/admin/users/:userId/ban",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Violating platform policies\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/me"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/users/me",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"bio\": \"Car enthusiast and dealer\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/:userId"
+          }
+        },
+        {
+          "name": "Get My Favorites",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/favorites"
+          }
+        },
+        {
+          "name": "Add to Favorites",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "url": "{{baseUrl}}/users/favorites",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemId\": \"vehicle-id-here\",\n  \"itemType\": \"vehicle\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
